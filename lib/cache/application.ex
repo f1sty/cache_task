@@ -7,7 +7,7 @@ defmodule Cache.Application do
   def start(_type, _args) do
     children = [
       Cache,
-      {Registry, [keys: :unique, name: Cache.FunctionRegistry]},
+      # {Registry, [keys: :unique, name: Cache.FunctionRegistry]},
       {Task.Supervisor, [name: Cache.TasksSupersisor]}
     ]
 

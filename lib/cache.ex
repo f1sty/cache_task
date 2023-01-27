@@ -3,19 +3,21 @@ defmodule Cache do
 
   require Logger
 
-  alias Cache.{Store, FunctionRegistry, TasksSupersisor}
+  alias Cache.{Store, FunctionsRegistry, TasksSupersisor}
 
   @type result ::
           {:ok, any()}
           | {:error, :timeout}
           | {:error, :not_registered}
 
-  def start_link(opts \\ [:set, :public, write_concurrency: true]) do
+  def start_link(opts \\ [:set, :public]) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @impl true
   def init(opts) do
+    FunctionsRegistry.start()
+
     cache = Store.new(opts)
     state = %{cache: cache, running_tasks: %{}}
 
@@ -28,11 +30,11 @@ defmodule Cache do
         _from,
         %{running_tasks: tasks} = state
       ) do
-    case Registry.register(FunctionRegistry, key, {fun, ttl}) do
-      {:error, {:already_registered, _pid}} ->
-        {:reply, {:error, :already_registered}, state}
+    case FunctionsRegistry.register(key, fun, ttl) do
+      {:error, :already_registered} = error ->
+        {:reply, error, state}
 
-      {:ok, _pid} ->
+      :ok ->
         tasks = run_task(key, tasks)
         state = %{state | running_tasks: tasks}
 
@@ -58,10 +60,15 @@ defmodule Cache do
               {:error, :timeout}
 
             {:ok, result} ->
-              [{_pid, {_fun, ttl}}] = Registry.lookup(FunctionRegistry, key)
-              Store.store(cache, key, result, ttl)
+              case FunctionsRegistry.get(key) do
+                {:error, _} = error ->
+                  error
 
-              result
+                {:ok, [_fun, ttl]} ->
+                  Store.store(cache, key, result, ttl)
+
+                  result
+              end
           end
 
         {:reply, result, state}
@@ -91,7 +98,7 @@ defmodule Cache do
   @impl true
   def handle_info({task_ref, {:ok, result}}, %{cache: cache, running_tasks: tasks} = state) do
     key = Enum.find_value(tasks, fn {key, task} -> task.ref == task_ref and key end)
-    [{_pid, {_fun, ttl}}] = Registry.lookup(FunctionRegistry, key)
+    {:ok, [_fun, ttl]} = FunctionsRegistry.get(key)
 
     Store.store(cache, key, result, ttl)
 
@@ -176,7 +183,7 @@ defmodule Cache do
   end
 
   defp run_task(key, tasks) do
-    [{_pid, {fun, _ttl}}] = Registry.lookup(FunctionRegistry, key)
+    {:ok, [fun, _ttl]} = FunctionsRegistry.get(key)
     task = Task.Supervisor.async_nolink(TasksSupersisor, fun, timeout: :infinity)
 
     Map.put(tasks, key, task)
