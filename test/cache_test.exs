@@ -1,5 +1,6 @@
 defmodule CacheTest do
   use ExUnit.Case, async: true
+  import ExUnit.CaptureLog
 
   alias Cache.Store
 
@@ -110,6 +111,42 @@ defmodule CacheTest do
 
       assert Store.get(key) == :nocache
     end
+
+    test "return `:ok` even if task raised and error", %{
+      raising_function: function,
+      ttl: ttl,
+      refresh_interval: refresh_interval,
+      key: key
+    } do
+      assert Cache.register_function(function, key, ttl, refresh_interval) == :ok
+    end
+
+    test "doesn't save cache if task raised and error", %{
+      raising_function: function,
+      ttl: ttl,
+      refresh_interval: refresh_interval,
+      key: key
+    } do
+      assert Cache.register_function(function, key, ttl, refresh_interval) == :ok
+      assert Store.get(key) == :nocache
+    end
+
+    test "logs error raised by task", %{
+      raising_function: function,
+      ttl: ttl,
+      refresh_interval: refresh_interval,
+      key: key
+    } do
+      {result, log} =
+        with_log(fn ->
+          Cache.register_function(function, key, ttl, refresh_interval)
+        end)
+
+      assert :ok = result
+      assert log =~ "exited abnormally with: ohshi~"
+
+      assert Store.get(key) == :nocache
+    end
   end
 
   describe "get/1" do
@@ -152,6 +189,7 @@ defmodule CacheTest do
     constant_function = fn -> {:ok, 42} end
     error_function = fn -> {:error, "too lazy to run"} end
     changing_function = fn -> {:ok, :erlang.monotonic_time(:millisecond)} end
+    raising_function = fn -> raise "ohshi~" end
 
     longrunning_function = fn ->
       Process.sleep(200)
@@ -165,6 +203,7 @@ defmodule CacheTest do
       error_function: error_function,
       constant_function: constant_function,
       longrunning_function: longrunning_function,
+      raising_function: raising_function,
       ttl: 6000,
       refresh_interval: 1000,
       key: key
