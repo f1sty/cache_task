@@ -103,7 +103,7 @@ defmodule Cache do
 
   @impl true
   def handle_info({:DOWN, task_ref, :process, _pid, {reason, _}}, state) do
-    Logger.error("Task #{inspect(task_ref)} exited abnormally with #{inspect(reason)}")
+    Logger.error("Task #{inspect(task_ref)} exited abnormally with: #{Exception.message(reason)}")
 
     {:noreply, remove_task(state, task_ref)}
   end
