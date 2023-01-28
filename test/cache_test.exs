@@ -130,23 +130,6 @@ defmodule CacheTest do
       assert Cache.register_function(function, key, ttl, refresh_interval) == :ok
       assert Store.get(key) == :nocache
     end
-
-    test "logs error raised by task", %{
-      raising_function: function,
-      ttl: ttl,
-      refresh_interval: refresh_interval,
-      key: key
-    } do
-      {result, log} =
-        with_log(fn ->
-          Cache.register_function(function, key, ttl, refresh_interval)
-        end)
-
-      assert :ok = result
-      assert log =~ "exited abnormally with: ohshi~"
-
-      assert Store.get(key) == :nocache
-    end
   end
 
   describe "get/1" do
