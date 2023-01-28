@@ -13,7 +13,6 @@ defmodule Cache do
           | {:error, :not_registered}
 
   def start_link(opts \\ []) do
-    nil
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
