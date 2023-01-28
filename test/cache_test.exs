@@ -1,6 +1,5 @@
 defmodule CacheTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureLog
 
   alias Cache.Store
 
