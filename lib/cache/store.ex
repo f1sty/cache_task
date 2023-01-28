@@ -1,15 +1,20 @@
 defmodule Cache.Store do
-  def new(opts), do: :ets.new(Cache.Results, [:named_table] ++ opts)
+  def start(opts \\ []), do: :ets.new(__MODULE__, [:named_table] ++ opts)
 
-  def store(store, key, value, ttl) do
+  def store(key, value, ttl) do
     expires_at = ttl + timestamp()
 
-    :ets.insert(store, {key, value, expires_at})
+    :ets.insert(__MODULE__, {key, value, expires_at})
   end
 
-  def get(store, key), do: :ets.lookup(store, key)
+  def get(key) do
+    case :ets.lookup(__MODULE__, key) do
+      [{_key, value, expires_at}] -> {value, expires_at}
+      [] -> :nocache
+    end
+  end
 
-  def delete(store, key), do: :ets.delete(store, key)
+  def delete(key), do: :ets.delete(__MODULE__, key)
 
   def timestamp(), do: :erlang.monotonic_time(:millisecond)
 end
