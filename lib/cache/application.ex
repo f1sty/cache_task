@@ -6,7 +6,7 @@ defmodule Cache.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      Cache,
+      {Cache, [name: Cache]},
       {Task.Supervisor, [name: Cache.TasksSupervisor]}
     ]
 

@@ -1,5 +1,7 @@
 defmodule Cache do
-  @moduledoc false
+  @moduledoc """
+  Implements self-rehydrating memoization cache on top of `GenServer`
+  """
 
   use GenServer
 
@@ -13,15 +15,15 @@ defmodule Cache do
           | {:error, :not_registered}
 
   def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{}, opts)
   end
 
   @impl true
-  def init(_opts) do
+  def init(initial_state) do
     FunctionsRegistry.start()
     Store.start()
 
-    {:ok, %{}}
+    {:ok, initial_state}
   end
 
   @impl true
@@ -44,7 +46,7 @@ defmodule Cache do
   def handle_call({:get, key, timeout}, _from, state) do
     result =
       with :nocache <- Store.get(key),
-           {:ok, {_fun, ttl}} <- FunctionsRegistry.get(key),
+           {:ok, ttl} <- FunctionsRegistry.get_ttl(key),
            %Task{} = task <- Map.get(state, key, {:error, :notask}),
            {:ok, result} <- Task.yield(task, timeout) do
         Store.store(key, result, ttl)
@@ -83,7 +85,7 @@ defmodule Cache do
   @impl true
   def handle_info({task_ref, {:ok, _} = result}, state) do
     key = Enum.find_value(state, fn {key, task} -> task.ref == task_ref && key end)
-    {:ok, {_fun, ttl}} = FunctionsRegistry.get(key)
+    {:ok, ttl} = FunctionsRegistry.get_ttl(key)
 
     Store.store(key, result, ttl)
 
@@ -170,11 +172,14 @@ defmodule Cache do
 
   After starting a task, it adds task data into the map using same key as a function being started.
   """
-  def start_task(tasks, key) do
+  @spec start_task(tasks :: map, key :: any) :: map
+  def(start_task(tasks, key)) do
     with false <- Map.has_key?(tasks, key),
-         {:ok, {fun, _ttl}} <- FunctionsRegistry.get(key),
+         {:ok, fun} <- FunctionsRegistry.get_fun(key),
          %Task{} = task <- Task.Supervisor.async_nolink(TasksSupervisor, fun, timeout: :infinity) do
       Map.put(tasks, key, task)
+    else
+      _ -> tasks
     end
   end
 
