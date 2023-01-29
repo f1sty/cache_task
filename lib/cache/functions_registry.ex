@@ -5,8 +5,8 @@ defmodule Cache.FunctionsRegistry do
 
   @type fun :: (() -> {:ok, any} | {:error, any})
 
-  @opts Application.compile_env!(__MODULE__, :ets_opts)
-  @name Application.compile_env!(__MODULE__, :name)
+  @opts Application.compile_env(:cache, [__MODULE__, :ets_opts])
+  @name Application.compile_env(:cache, [__MODULE__, :name])
 
   @spec start() :: atom
   def start() do

@@ -3,8 +3,8 @@ defmodule Cache.Store do
   Utility module for cache store.
   """
 
-  @opts Application.compile_env!(__MODULE__, :ets_opts)
-  @name Application.compile_env!(__MODULE__, :name)
+  @opts Application.compile_env(:cache, [__MODULE__, :ets_opts])
+  @name Application.compile_env(:cache, [__MODULE__, :name])
 
   @spec start() :: atom
   def start() do
@@ -44,5 +44,5 @@ defmodule Cache.Store do
   @spec delete(key :: any) :: true
   def delete(key), do: :ets.delete(@name, key)
 
-  defp timestamp(), do: :erlang.monotonic_time(:millisecond)
+  def timestamp(), do: :erlang.monotonic_time(:millisecond)
 end

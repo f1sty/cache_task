@@ -173,7 +173,7 @@ defmodule Cache do
   After starting a task, it adds task data into the map using same key as a function being started.
   """
   @spec start_task(tasks :: map, key :: any) :: map
-  def(start_task(tasks, key)) do
+  def start_task(tasks, key) do
     with false <- Map.has_key?(tasks, key),
          {:ok, fun} <- FunctionsRegistry.get_fun(key),
          %Task{} = task <- Task.Supervisor.async_nolink(TasksSupervisor, fun, timeout: :infinity) do
