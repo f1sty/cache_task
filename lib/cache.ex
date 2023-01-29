@@ -70,9 +70,10 @@ defmodule Cache do
 
   @impl true
   def handle_info({:maybe_discard, key, ttl}, state) do
-    with {_result, expires_at} <- Store.get(key) do
-      Store.timestamp() >= expires_at && Store.delete(key)
-    else
+    case Store.get(key) do
+      {_value, expires_at} ->
+        Store.timestamp() >= expires_at && Store.delete(key)
+
       :nocache ->
         Logger.debug("Tried to discard #{key} with running tasks: #{inspect(state)}, ignoring")
     end
